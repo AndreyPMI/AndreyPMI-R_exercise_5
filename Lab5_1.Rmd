@@ -1,0 +1,108 @@
+---
+title: "Фаткулин Андрей ПМИ-4-1 Лаб.5"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    self_contained: no
+    css: style.css
+---
+
+```{r setup, warning = F, message = F}
+# загрузка пакетов
+library('data.table')
+library('WDI')
+library('leaflet')
+# devtools::install_github('mages/googleVis')
+suppressPackageStartupMessages(library('googleVis'))
+
+# для загрузки свежей версии pandoc:
+#  https://github.com/pandoc-extras/pandoc-nightly/releases/tag/hash-7c20fab3
+#  архив pandoc-windows-7c20fab3.zip распаковать в RStudio/bin/pandoc
+```
+
+
+## Интерактивная картограмма  
+
+
+Интерактивная картограмма на данных Всемирного Банка по Доступу к электричеству (% населения)  за последний 2017 год    
+
+```{r Интерактивная картограмма, results = 'asis', cashe = T}
+# данные по ВВП по ППП
+indicator.code <- 'GC.XPN.TOTL.GD.ZS'
+DT <- data.table(WDI(indicator = indicator.code, start = 2018, end = 2018))
+
+# все коды стран iso2
+fileURL <- 'https://pkgstore.datahub.io/core/country-list/data_csv/data/d7c9d7cfb42cb69f4422dec222dbbaa8/data_csv.csv'
+all.iso2.country.codes <- read.csv(fileURL, stringsAsFactors = F, 
+                                   na.strings = '.')
+
+# убираем макрорегионы
+DT <- na.omit(DT[iso2c %in% all.iso2.country.codes$Code, ])
+
+# объект: таблица исходных данных
+g.tbl <- gvisTable(data = DT[, -'year'], 
+                   options = list(width = 300, height = 400))
+# объект: интерактивная карта
+g.chart <- gvisGeoChart(data = DT, 
+                        locationvar = 'iso2c', 
+                        hovervar = 'country',
+                        colorvar = indicator.code, 
+                        options = list(width = 500, 
+                                       height = 400, 
+                                       dataMode = 'regions'))
+# размещаем таблицу и карту на одной панели (слева направо)
+TG <- gvisMerge(g.tbl, g.chart, 
+                horizontal = TRUE, 
+                tableOptions = 'bgcolor=\"#CCCCCC\" cellspacing=10')
+
+# вставляем результат в html-документ
+TG
+```
+
+
+## Карты на основе leaflet    
+
+На этой карте показано расположение  Автодромов спортивных крытых  
+  
+
+```{r Карта с маркерами на основе leaflet, results = 'asis', message = F}
+# картинка-логотип для маркеров объекта
+fileURL <- 'https://raw.githubusercontent.com/AndreyPMI/AndreyPMI-R_exercise_5/master/house1.png'
+pharm.icon <- makeIcon(iconUrl = fileURL, 
+                       iconWidth = 31,
+                       iconHeight = 31,
+                       iconAnchorX = 31,
+                       iconAnchorY = 31)
+
+fileURL <- 'https://raw.githubusercontent.com/AndreyPMI/AndreyPMI-R_exercise_5/master/Coord.csv'
+
+#fileURL <- 'Coord.csv'
+DT.loc <- read.csv2(fileURL, stringsAsFactors = F)
+DT.loc$lat <- as.numeric(DT.loc$lat)
+DT.loc$long <- as.numeric(DT.loc$long)
+
+# подписи к объектам с гиперссылками
+map.sites <- paste0(DT.loc$наименование, '</br>',
+                    DT.loc$Название , '</br>',
+            
+                    
+                    '<em>', DT.loc$Контактный.телефон, '</em>')
+
+# создаём виджет с картой
+myMap <- DT.loc %>% leaflet(width = 800, height = 800) %>% 
+addTiles() %>% addMarkers(icon = pharm.icon, popup = map.sites)
+
+# рисуем карту
+myMap
+```
+
+
+
+### Использованы пакеты R  
+<!-- ссылки получены функцией citation('имя_пакета')-->
+  
+1. `r citation('data.table')$textVersion`    
+1. `r citation('WDI')$textVersion`    
+1. `r citation('leaflet')$textVersion`    
+1. `r citation('googleVis')$textVersion`    
+
